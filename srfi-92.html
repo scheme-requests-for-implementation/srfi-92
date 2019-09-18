@@ -1,58 +1,481 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html40/loose.dtd">
+<!DOCTYPE html>
 <html>
-  <head>
-    <title>SRFI 92: ALAMBDA and ALAMBDA*</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="/srfi.css" type="text/css" />
-  </head>
+<head>
+  <meta charset="utf-8">
+  <title>SRFI 92: ALAMBDA and ALAMBDA*</title>
+  <meta name="viewport" content=
+  "width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/srfi.css" type="text/css">
+  <link href="/favicon.png" rel="icon" sizes="192x192" type=
+  "image/png">
+</head>
+<body>
+  <h1>Title</h1>
+  <p>ALAMBDA and ALAMBDA*</p>
+  <h1>Author</h1>
+  <p>Joo ChurlSoo</p>
+  <h1>Status</h1>
+  <p>This SRFI is currently in <em>withdrawn</em> status. Here is
+  <a href="https://srfi.schemers.org/srfi-process.html">an
+  explanation</a> of each status that a SRFI can hold. To provide
+  input on this SRFI, please send email to <code><a href=
+  "mailto:srfi+minus+92+at+srfi+dotschemers+dot+org">srfi-92@<span class="antispam">nospam</span>srfi.schemers.org</a></code>.
+  To subscribe to the list, follow <a href=
+  "https://srfi.schemers.org/srfi-list-subscribe.html">these
+  instructions</a>. You can access previous messages via the
+  mailing list <a href=
+  "https://srfi-email.schemers.org/srfi-92">archive</a>.</p>
+  <ul>
+    <li>Received: <a href="srfi-92-1.1.txt">2006/05/10</a>
+    </li>
+    <li>Revised: <a href="srfi-92-1.2.txt">2006/05/31</a>
+    </li>
+    <li>Revised: <a href="srfi-92-1.3.txt">2006/07/24</a>
+    </li>
+    <li>Withdrawn: <a href="srfi-92-1.7.txt">2007/04/09</a>
+    </li>
+    <li>Draft: 2006/05/21 - 2006/07/21</li>
+  </ul>
+  <h1>Abstract</h1>
+  <p>This SRFI introduces ALAMBDA and ALAMBDA*, each of which has
+  two modes of operation:</p>
+  <ol>
+    <li>it creates a procedure that checks actual arguments and
+    takes optional arguments,</li>
+    <li>it returns a different procedure by checking each of actual
+    arguments and the number of them.</li>
+  </ol>
+  <p><em>Note:</em> the name and contents of this SRFI have been
+  changed, to reflect that CHECK-LAMBDA, and COND-LAMBDA were
+  combined into the new ALAMBDA.</p>
+  <h1>Rationale</h1>
+  <p>The first mode of operation reduces not only the clutter of
+  various error conditionals by checking actual arguments but also
+  somewhat lengthy code by combining optional argument handling
+  methods such as LET-OPTIONALS and LET-KEYWORDS into a single
+  syntax.</p>
+  <p>Optional variables include not only optional fixed variables
+  but also optional non-fixed variables. The formers are the same
+  as those of <code>opt</code> form of ALET and the latters are the
+  same as those of <code>cat</code> and <code>key</code> forms of
+  ALET (see SRFI-86). The following are examples to show the
+  similarities.</p>
+  <p>1. optional fixed variables (<code>opt</code> form):</p>
+  <pre>
+((lambda (str . rest)
+   (alet* ((len (string-length str))
+           (opt rest
+                (start 0 (and (integer? start) (&lt;= 0 start len)))
+                (end len (and (integer? end) (&lt;= start end len)))))
+     (substring str start end))) "abcdefg" 1 6)
+=&gt; "bcdef"
 
-  <body>
+((alambda* (str
+            "opt"
+            (start 0 (and (integer? start) (&lt;= 0 start (string-length str))))
+            (end (string-length str)
+                 (and (integer? end) (&lt;= start end (string-length str)))))
+   (substring str start end)) "abcdefg" 1 6)
+=&gt; "bcdef"
+</pre>
+  <p>2. optional non-fixed non-named variables (<code>cat</code>
+  form):</p>
+  <pre>
+((lambda (str . rest)
+   (alet ((cat rest
+               (start 0
+                      (and (list? start) (= 2 (length start))
+                           (eq? 'start (car start)))
+                      (cadr start))     ; true
+               (end (string-length str)
+                    (and (list? end) (= 2 (length end)) (eq? 'end (car end)))
+                    (cadr end))))       ; true
+     (substring str start end))) "abcdefg" '(end 6) '(start 1))
+=&gt; "bcdef"
 
-<H1>Title</H1>
-ALAMBDA and ALAMBDA*
+((alambda* (str
+            "cat"
+            (start 0
+                   (and (list? start) (= 2 (length start))
+                        (eq? 'start (car start)))
+                   (cadr start))        ; true
+            (end (string-length str)
+                 (and (list? end) (= 2 (length end)) (eq? 'end (car end)))
+                 (cadr end)))           ; true
+     (substring str start end)) "abcdefg" '(end 6) '(start 1))
+=&gt; "bcdef"
 
-<H1>Author</H1>
-Joo ChurlSoo
+3. optional non-fixed named variables (`key' form):
 
-<H1>Status</H1>
+((lambda (str . rest)
+   (alet* ((len (string-length str))
+           (key rest
+                (start 0 (and (integer? start) (&lt;= 0 start len)))
+                (end len (and (integer? end) (&lt;= start end len)))))
+     (substring str start end))) "abcdefg" 'end 6 'start 1)
+=&gt; "bcdef"
 
-<P><em>Note:</em> the name and contents of this SRFI have been
-changed, to reflect that CHECK-LAMBDA, and COND-LAMBDA were combined
-into the new ALAMBDA. </P>
+((alambda* (str
+            "key"
+            (start 0 (and (integer? start) (&lt;= 0 start (string-length str))))
+            (end (string-length str)
+                 (and (integer? end) (&lt;= start end (string-length str)))))
+   (substring str start end)) "abcdefg" 'end 6 'start 1)
+=&gt; "bcdef"
+</pre>
+  <p>Like optional variables, required variables can be divded into
+  three groups, namely, conventional required fixed variables,
+  required non-fixed non-named variables, and required non-fixed
+  named variables. These are best explained by simple examples.</p>
+  <p>1. required fixed variables:</p>
+  <pre>
+(define vec-ref
+  (alambda* ((vec (vector? vec))
+             (num (and (integer? num) (&lt;= 0 num) (&lt; num (vector-length vec)))))
+    (vector-ref vec num)))
+(vec-ref '#(1 2 3) 1)   =&gt; 2
+(vec-ref 1 '#(1 2 3))   =&gt; bad argument 1 vec (vector? vec)
+(vec-ref '#(1 2 3))     =&gt; wrong number of arguments
+</pre>
+  <p>2. required non-fixed non-named variables:</p>
+  <pre>
+(define str-ref
+  (alambda* ("required cat"
+             (str (string? str))
+             (n (and (integer? n) (&lt;= 0 n) (&lt; n (string-length str)))))
+    (string-ref str n)))
+(str-ref "abc" 1)   =&gt; #\b
+(str-ref 1 "abc")   =&gt; #\b
+(str-ref 1 2)       =&gt; bad arguments (1 2) str (string? str)
+(str-ref "abc")     =&gt; wrong number of arguments
+</pre>
+  <p>3. required non-fixed named variables:</p>
+  <pre>
+(define lis-ref
+  (alambda* ("required key"
+             (lis (list? lis))
+             (num (and (integer? num) (&lt;= 0 num) (&lt; num (length lis)))))
+    (list-ref lis num)))
+(lis-ref 'num 1 'lis '(1 2 3)) =&gt; 2
+(lis-ref 'lis '(1 2 3) 'num 1) =&gt; 2
+(lis-ref 'lis '(1 2 3) 'nu 3)  =&gt; no corresponding value to key num (nu 3)
+(lis-ref 'lis '(1 2 3) 'nu)    =&gt; wrong number of arguments
+</pre>
+  <p>The second mode of operation reduces the clutter of procedures
+  more precisely than CASE-LAMBDA of SRFI-16 by adding
+  <code>&lt;test&gt;</code> to its formal argument list to check
+  each of actual arguments. The following are examples to show the
+  differences.</p>
+  <pre>
+(define list-ref/set!
+  (case-lambda
+   ((a b) (list-ref a b))
+   ((a b c) (set-car! (list-tail a b) c))
+   (a (error "bad arguments" a))))
 
-This SRFI is currently in ``withdrawn'' status.  To see an explanation of
-each status that a SRFI can hold, see <A
-HREF="http://srfi.schemers.org/srfi-process.html">here</A>.
-To
-provide input on this SRFI, please <code><A
-HREF="mailto:srfi minus 92 at srfi dot schemers dot org">mail to
-&lt;srfi minus 92 at srfi dot schemers dot org&gt;</A></code>.  See <A
-HREF="../srfi-list-subscribe.html">instructions here</A> to subscribe to
-the list.  You can access the discussion via <A
-HREF=mail-archive/maillist.html>the archive of the mailing list</A>.
-You can access
-post-withdrawal messages via
-<a href="http://srfi.schemers.org/srfi-92/post-mail-archive/maillist.html">
-the archive of the mailing list</a>.
+(define ref/set!
+  (alambda (cond
+            (((a (list? a)) b) (list-ref a b))
+            (((a (string? a)) b) (string-ref a b))
+            (((a (vector? a)) b) (vector-ref a b))
+            (((a (list? a)) b c) (set-car! (list-tail a b) c))
+            (((a (string? a)) b c) (string-set! a b c))
+            (((a (vector? a)) b c) (vector-set! a b c))
+            (a (error "bad arguments" a)))))
+</pre>
+  <h1>Specification</h1>
+  <p>The syntax is defined in the extended BNF of R5RS.</p>
+  <pre>
+(alambda  &lt;sentence&gt;)
+(alambda* &lt;sentence&gt;)
+syntax-rules identifier: cond
+&lt;sentence&gt; --&gt;  &lt;extended formals&gt; &lt;body&gt; | (cond &lt;clause&gt;+)
+&lt;extended formals&gt; --&gt;
+          | (&lt;required spec&gt; &lt;optional spec&gt; &lt;key option&gt;)
+          | (&lt;required spec&gt; &lt;key option&gt;)
+          | (&lt;opiontal spec&gt; &lt;key option&gt;)
+          | (&lt;required spec&gt; &lt;optional spec&gt; &lt;key option&gt; . &lt;variable&gt;)
+          | (&lt;required spec&gt; &lt;key option&gt; . &lt;variable&gt;)
+          | (&lt;optional spec&gt; &lt;key option&gt; . &lt;variable&gt;)
+          | &lt;variable&gt;
+          | ()
+&lt;required spec&gt; --&gt; &lt;required fixed variable spec&gt;+
+                  | &lt;required fixed variable spec&gt;* &lt;required non-fixed spec&gt;
+&lt;required fixed variable spec&gt; --&gt; &lt;variable&gt; | (&lt;variable&gt; &lt;test spec&gt;)
+&lt;test spec&gt; --&gt; &lt;test&gt;
+              | &lt;test&gt; &lt;true substitute&gt;
+              | &lt;test&gt; &lt;true substitute&gt; &lt;false substitute&gt;
+&lt;required non-fixed spec&gt; --&gt; &lt;required cat spec&gt;
+                            | &lt;required key spec&gt;
+                            | &lt;required cat spec&gt; &lt;required key spec&gt;
+                            | &lt;required key spec&gt; &lt;required cat spec&gt;
+&lt;required cat spec&gt; --&gt; "required cat" &lt;required fixed variable spec&gt;+
+&lt;required key spec&gt; --&gt; "required key" &lt;required key variable spec&gt;+
+&lt;required key variable spec&gt; --&gt; &lt;required fixed variable spec&gt;
+                               | ((&lt;variable&gt; &lt;keyword&gt;))
+                               | ((&lt;variable&gt; &lt;keyword&gt;) &lt;test spec&gt;)
+&lt;optional spec&gt; --&gt; &lt;opt spec&gt;
+                  | &lt;cat spec&gt;
+                  | &lt;key spec&gt;
+                  | &lt;opt spec&gt; &lt;cat spec&gt;
+                  | &lt;opt spec&gt; &lt;key spec&gt;
+                  | &lt;cat spec&gt; &lt;key spec&gt;
+                  | &lt;key spec&gt; &lt;cat spec&gt;
+                  | &lt;opt spec&gt; &lt;cat spec&gt; &lt;key spec&gt;
+                  | &lt;opt spec&gt; &lt;key spec&gt; &lt;cat spec&gt;
+&lt;opt spec&gt; --&gt; "opt" &lt;opt variable spec&gt;+
+&lt;opt variable spec&gt; --&gt; &lt;variable&gt;
+                      | (&lt;variable&gt; &lt;default&gt;)
+                      | (&lt;variable&gt; &lt;default&gt; &lt;test spec&gt;)
+&lt;cat spec&gt; --&gt; "cat" &lt;opt variable spec&gt;+
+&lt;key spec&gt; --&gt; "key" &lt;key variable spec&gt;+
+&lt;key variable spec&gt; --&gt; &lt;opt variable spec&gt;
+                      | ((&lt;variable&gt; &lt;keyword&gt;))
+                      | ((&lt;variable&gt; &lt;keyword&gt;) &lt;default&gt;)
+                      | ((&lt;variable&gt; &lt;keyword&gt;) &lt;default&gt; &lt;test spec&gt;)
+&lt;key option&gt; --&gt; #f | #t | &lt;empty&gt;
+&lt;test&gt; --&gt; &lt;expression&gt;
+&lt;true substitute&gt; --&gt; &lt;expression&gt;
+&lt;false substitute&gt; --&gt; &lt;expression&gt;
+&lt;default&gt; --&gt; &lt;expression&gt;
+&lt;keyword&gt; --&gt; &lt;any scheme object&gt;
 
-<P><UL>
-<li>Received: <a href="http://srfi.schemers.org/srfi-92/srfi-92-1.1.txt">2006/05/10</a></li>
-<li>Revised:  <a href="http://srfi.schemers.org/srfi-92/srfi-92-1.2.txt">2006/05/31</a></li
-<li>Revised:  <a href="http://srfi.schemers.org/srfi-92/srfi-92-1.3.txt">2006/07/24</a></li
-<li>Withdrawn: <a href="http://srfi.schemers.org/srfi-92/srfi-92-1.7.txt">2007/04/09</a></li>
-<li>Draft: 2006/05/21 - 2006/07/21</li>
-</UL>
+&lt;clause&gt; --&gt; (&lt;cond formals&gt; &lt;body&gt;)
+&lt;cond formals&gt; --&gt; (&lt;cond variable spec&gt;*)
+                 | &lt;variable&gt;
+                 | (&lt;cond variable spec&gt;+ . &lt;variable&gt;)
+&lt;cond variable spec&gt; --&gt; &lt;variable&gt;
+                       | (&lt;variable&gt; &lt;test&gt;)
+</pre>
+  <p>The ALAMBDA* is to the ALAMBDA what the LET* is to the LET.
+  The <code>&lt;default&gt;</code>s, <code>&lt;test&gt;</code>s,
+  <code>&lt;true substitute&gt;</code>s, and <code>&lt;false
+  substitute&gt;</code>s of ALAMBDA* are evaluated in an
+  environment that all the bindings of previous
+  <code>&lt;variable&gt;</code>s are visible.</p>
+  <p>1. the first mode of operation:</p>
+  <p>There are three kinds of required variables, namely, required
+  fixed variable, required non-fixed non-named variable, and
+  required non-fixed named variable. They determine the number of
+  required actual arguments, that is, the minimum arity of the
+  resulting procedure.</p>
+  <p>The required fixed variables are placed before any string
+  marker in <code>&lt;extended formals&gt;</code>. They are bound
+  to successive actual arguments starting with the first actual
+  argument. If there is a <code>&lt;test&gt;</code>, it is
+  evaluated. If it returns a false value and there is no
+  <code>&lt;false substitute&gt;</code>, an error is signaled. If
+  it returns a false value and there is a <code>&lt;false
+  substitute&gt;</code>, the variable is rebound to the result of
+  evaluating <code>&lt;false substitute&gt;</code> instead of
+  signaling an error. If it returns a true value and there is a
+  <code>&lt;true substitute&gt;</code>, the variable is rebound to
+  the result of evaluating <code>&lt;true
+  substitute&gt;</code>.</p>
+  <p>The required non-fixed non-named variables follow a "required
+  cat" marker in <code>&lt;extended formals&gt;</code>. The
+  variable is temporarily bound to each of remaining required
+  actual arguments sequentially, until <code>&lt;test&gt;</code>
+  returns a true value, then the variable is finally bound to the
+  passed argument. If there is no <code>&lt;test&gt;</code>, the
+  first one of the remaining required actual arguments is regarded
+  as passing. If any actual argument does not pass
+  <code>&lt;test&gt;</code>, an error is signaled. If there is a
+  <code>&lt;false substitute&gt;</code> and
+  <code>&lt;test&gt;</code> returns a false value, the variable is
+  finally bound to the result of evaluating <code>&lt;false
+  substitute&gt;</code> instead of the above process. If there is a
+  <code>&lt;true substitute&gt;</code> and
+  <code>&lt;test&gt;</code> returns a true value, the variable is
+  rebound to the result of evaluating <code>&lt;true
+  substitute&gt;</code>.</p>
+  <p>The required non-fixed named variables follow a "required key"
+  marker in <code>&lt;extended formals&gt;</code>. Unlike SRFI-89,
+  the keywords are not self-evaluating symbols, but any scheme
+  objects. The keyword used at a call site for the corresponding
+  variable is a symbol of the same name as the variable. But the
+  keyword can be any scheme object when the required parameter is
+  specified as a double parenthesized variable and a keyword. The
+  remaining required actual arguments must be an even number. They
+  are sequentially interpreted as a series of pairs, where the
+  first member of each pair is a keyword corresponding to the
+  variable, and the second is the corresponding value. If there is
+  no element for a particular keyword, an error is signaled. When
+  there is a <code>&lt;test&gt;</code>, it is evaluated. If it
+  returns a false value and there is no <code>&lt;false
+  substitute&gt;</code>, an error is signaled. If it returns a
+  false value and there is a <code>&lt;false substitute&gt;</code>,
+  the variable is rebound to the result of evaluating
+  <code>&lt;false substitute&gt;</code> instead of signaling an
+  error. If it returns a true value and there is a <code>&lt;true
+  substitute&gt;</code>, the variable is rebound to the result of
+  evaluating <code>&lt;true substitute&gt;</code>.</p>
+  <p>The optional fixed variables follow an "opt" marker in
+  <code>&lt;extended formals&gt;</code>. The binding method is the
+  same as that of the required fixed variables except that the
+  variable is bound to the result of evaluating
+  <code>&lt;default&gt;</code> instead of signaling an error if
+  there are no remaining actual arguments. If
+  <code>&lt;default&gt;</code> is not specified, <code>#f</code> is
+  the default.</p>
+  <p>The optional non-fixed non-named variables follow a "cat"
+  marker in <code>&lt;extended formals&gt;</code>. The binding
+  method is the same as that of the required non-fixed non-named
+  variables except that the variable is bound to the result of
+  evaluating <code>&lt;default&gt;</code> instead of signaling an
+  error if any actual argument does not pass
+  <code>&lt;test&gt;</code>. If <code>&lt;default&gt;</code> is not
+  specified, <code>#f</code> is the default.</p>
+  <p>The optional non-fixed named variables follow a "key" marker
+  in <code>&lt;extended formals&gt;</code>. The binding method is
+  the same as that of the required non-fixed named variables except
+  that the variable is bound to the result of evaluating
+  <code>&lt;default&gt;</code> instead of signaling an error if
+  there is no corresponding value to a particular keyword. If
+  <code>&lt;default&gt;</code> is not specified, <code>#f</code> is
+  the default.</p>
+  <p>The following key options can be used to control binding
+  behavior in case that the keyword of keyword-value pair at the
+  call site is different from any keywords specified in
+  <code>&lt;extended formals&gt;</code>.</p>
+  <ol>
+    <li>default -- The remaining actual arguments are continually
+    interpreted as a series of pairs.</li>
+    <li><code>#f</code> -- An error is signaled in case of required
+    non-fixed named variables. In case of optional non-fixed named
+    variables, the variable is bound to the corresponding
+    <code>&lt;default&gt;</code>.</li>
+    <li><code>#t</code> -- The remaining actual arguments are
+    continually interpreted as a single element until the element
+    is a particular keyword.</li>
+  </ol>
+  <p>When there are remaining actual arguments, an error is
+  signaled if dotted rest variable is not given. If dotted rest
+  variable is given, it is bound to the remaining actual
+  arguments.</p>
+  <p>2. the second mode of operation:</p>
+  <p>This is an extended form of CASE-LAMBDA of SRFI-16. Like
+  CASE-LAMBDA, it returns a procedure of the first
+  <code>&lt;clause&gt;</code>, the <code>&lt;cond
+  formals&gt;</code> of which is matched with the number of actual
+  arguments. But if there is a <code>&lt;test&gt;</code> and the
+  result of evaluation returns a false value, the subsequent
+  <code>&lt;clause&gt;</code> is processed in spite of the match.
+  If no <code>&lt;clause&gt;</code> matches, an error is
+  signaled.</p>
+  <h1>Examples</h1>
+  <pre>
+((alambda (a
+           (b (number? b))
+           "opt" (c 10)
+           "key" ((d 'dd) 30 (number? d)) e ((f "ff") 40) (g 50)
+           . h)
+   (list a b c d e f g h))
+ 0 1 2 'dd 3 44 55 'g 6 'dd 4 'f 66 77 "ff" 5)
+=&gt; (0 1 2 3 #f 40 6 (44 55 dd 4 f 66 77 "ff" 5))
 
-<H1><a href="srfi-92.txt">Body</a></H1>
+((alambda (a
+           (b (number? b))
+           "opt" (c 10)
+           "key" ((d 'dd) 30 (number? d)) e ((f "ff") 40) (g 50)
+           #f
+           . h)
+   (list a b c d e f g h))
+ 0 1 2 'dd 3 44 55 'g 6 'dd 4 'f 66 77 "ff" 5)
+=&gt; (0 1 2 3 #f 40 50 (44 55 g 6 dd 4 f 66 77 "ff" 5))
 
-<p>The SRFI text is <a
-href="srfi-92.txt">here</a>.</p>
+((alambda (a
+           (b (number? b))
+           "opt" (c 10)
+           "key" ((d 'dd) 30 (number? d)) e ((f "ff") 40) (g 50)
+           #t
+           . h)
+   (list a b c d e f g h))
+ 0 1 2 'dd 3 44 55 'g 6 'dd 4 'f 66 77 "ff" 5)
+=&gt; (0 1 2 3 #f 5 6 (44 55 dd 4 f 66 77))
 
-    <hr>
-    <address>Editor: <a href="mailto:srfi-editors at srfi dot schemers dot org">Francisco Solsona</a></address>
-<!-- hhmts start -->
-Last modified: Fri Sep 18 17:03:05 MST 2009
-<!-- hhmts end -->
-  </body>
+(define ref/set!
+  (alambda* (cond
+             (((a (list? a))
+               (b (and (integer? b) (&lt;= 0 b) (&lt; b (length a)))))
+              (list-ref a b))
+             (((a (string? a))
+               (b (and (integer? b) (&lt;= 0 b) (&lt; b (string-length a)))))
+              (string-ref a b))
+             (((a (vector? a))
+               (b (and (integer? b) (&lt;= 0 b) (&lt; b (vector-length a)))))
+              (vector-ref a b))
+             (((a (list? a))
+               (b (and (integer? b) (&lt;= 0 b) (&lt; b (length a))))
+               c)
+              (set-car! (list-tail a b) c))
+             (((a (string? a))
+               (b (and (integer? b) (&lt;= 0 b) (&lt; b (string-length a))))
+               (c (char? c)))
+              (string-set! a b c))
+             (((a (vector? a))
+               (b (and (integer? b) (&lt;= 0 b) (&lt; b (vector-length a))))
+               c)
+              (vector-set! a b c))
+             (a (error "bad arguments" a)))))
+
+(let ((str (string #\a #\b #\c))
+      (lis (list 1 2 3))
+      (vec (vector 4 5 6)))
+  (display (ref/set! str 1)) (display " ")
+  (display (ref/set! lis 1)) (display " ")
+  (display (ref/set! vec 1)) (newline)
+  (display str) (display " ")
+  (display lis) (display " ")
+  (display vec) (newline)
+  (ref/set! str 1 #\z) (ref/set! lis 1 8) (ref/set! vec 1 9)
+  (display str) (display " ")
+  (display lis) (display " ")
+  (display vec) (newline))
+=&gt; b 2 5
+   abc (1 2 3) #(4 5 6)
+   azc (1 8 3) #(4 9 6)
+</pre>
+  <h1>Implementation</h1>
+  <p>The <a href="srfi-92.scm">implementation</a> is written in
+  R5RS hygienic macros and requires SRFI-23 (Error reporting
+  mechanism).</p>
+  <h1>References</h1>
+  <pre>
+[R5RS]      Richard Kelsey, William Clinger, and Jonathan Rees: Revised(5)
+            Report on the Algorithmic Language Scheme
+            http://www.schemers.org/Documents/Standards/R5Rs/
+[SRFI 16]   Lars T Hansen: Syntax for procedures of variable arity.
+            http://srfi.schemers.org/srfi-16/
+[SRFI 86]   Joo ChurlSoo: MU and NU simulating VALUES & CALL-WITH-VALUES,
+            and their related LET-syntax.
+            http://srfi.schemers.org/srfi-86/
+[SRFI 89]   Marc Feeley: Optional and named parameters.
+            http://srfi.schemers.org/srfi-89/
+</pre>
+  <h1>Copyright</h1>
+  <p>Copyright (c) 2006 Joo ChurlSoo.</p>
+  <p>Permission is hereby granted, free of charge, to any person
+  obtaining a copy of this software and associated documentation
+  files (the ``Software''), to deal in the Software without
+  restriction, including without limitation the rights to use,
+  copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the
+  Software is furnished to do so, subject to the following
+  conditions:</p>
+  <p>The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the
+  Software.</p>
+  <p>THE SOFTWARE IS PROVIDED ``AS IS'', WITHOUT WARRANTY OF ANY
+  KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+  AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+  OTHER DEALINGS IN THE SOFTWARE.</p>
+  <address>
+    Editor: Francisco Solsona
+  </address>
+</body>
 </html>
