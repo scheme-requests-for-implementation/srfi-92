@@ -4,6 +4,8 @@
 
 
 
+keywords: [[https://srfi.schemers.org/?keywords=miscellaneous][Miscellaneous]], [[https://srfi.schemers.org/?keywords=type-checking][Type Checking]]
+
 This repository hosts [[https://srfi.schemers.org/srfi-92/][SRFI 92]]: ALAMBDA and ALAMBDA*, a [[https://srfi.schemers.org/][Scheme Request for Implementation]].
 
 This SRFI is in /withdrawn/ status.
